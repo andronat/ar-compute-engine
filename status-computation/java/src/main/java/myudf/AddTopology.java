@@ -12,13 +12,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import org.apache.pig.EvalFunc;
-import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataType;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
-import utils.ExternalResources;
 
 /**
  *
@@ -27,8 +25,6 @@ import utils.ExternalResources;
 public class AddTopology extends EvalFunc<Tuple> {    
     private final TupleFactory mTupleFactory = TupleFactory.getInstance();
     private Map<String, String[]> topology = null;
-    // This map contains: poem profile -> service flavour -> list of valid APs
-    private Map<String, Map <String, DataBag>> poemMap = null;
 
     private void initTopology(final String topology) throws FileNotFoundException, IOException {
 
@@ -58,23 +54,8 @@ public class AddTopology extends EvalFunc<Tuple> {
 
     @Override
     public Tuple exec(Tuple tuple) throws IOException {
-        String poemProfile = (String) tuple.get(6);
-        
         if (this.topology == null) {
             this.initTopology((String) tuple.get(2) + (String) tuple.get(3) + (String) tuple.get(4));
-        }
-
-        if (this.poemMap == null) {
-            String[] mongoInfo = ((String) tuple.get(5)).split(":", 2);
-            String mongoHostname = mongoInfo[0];
-            int mongoPort = Integer.parseInt(mongoInfo[1]);
-
-            this.poemMap = ExternalResources.getSFtoAvailabilityProfileNames(mongoHostname, mongoPort);
-        }
-        
-        if (!this.poemMap.containsKey(poemProfile)) {
-            // we need to return a tuple with 9 nulls
-            return mTupleFactory.newTuple(9);
         }
         
         // Hostname + Service Flavour
@@ -94,8 +75,6 @@ public class AddTopology extends EvalFunc<Tuple> {
             out.set(i, s[i]);
         }
 
-        // Add Availability profiles as a bag
-        out.set(8, this.poemMap.get(poemProfile).get(serviceFlavour));
         return out;
     }
 
@@ -109,16 +88,6 @@ public class AddTopology extends EvalFunc<Tuple> {
         Schema.FieldSchema infrastructure = new Schema.FieldSchema("infrastructure", DataType.CHARARRAY);
         Schema.FieldSchema certification_status = new Schema.FieldSchema("certification_status", DataType.CHARARRAY);
         Schema.FieldSchema site_scope = new Schema.FieldSchema("site_scope", DataType.CHARARRAY);
-
-        Schema.FieldSchema availability_profile = new Schema.FieldSchema("availability_profile", DataType.CHARARRAY);
-        Schema apS = new Schema();
-        apS.add(availability_profile);
-        Schema.FieldSchema availability_profiles = null;
-        try {
-            availability_profiles = new Schema.FieldSchema("availability_profiles", apS, DataType.BAG);
-        } catch (FrontendException ex) {
-            Logger.getLogger(AddTopology.class.getName()).log(Level.SEVERE, null, ex);
-        }
         
         Schema p_metricS = new Schema();
         p_metricS.add(production);
@@ -129,7 +98,6 @@ public class AddTopology extends EvalFunc<Tuple> {
         p_metricS.add(infrastructure);
         p_metricS.add(certification_status);
         p_metricS.add(site_scope);
-        p_metricS.add(availability_profiles);
         
         try {
             return new Schema(new Schema.FieldSchema("topology", p_metricS, DataType.TUPLE));
