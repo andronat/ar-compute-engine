@@ -28,7 +28,6 @@ public class SiteAvailability extends EvalFunc<Tuple> {
     private final TupleFactory mTupleFactory = TupleFactory.getInstance();
     private Map<String, String> weights = null;
     
-    private Integer nGroups = null;
     private Map<String, Map<String, Integer>> allAPs = null;
     private Map<String, Map<String, Object>> recalculationMap = null;
 
@@ -62,7 +61,6 @@ public class SiteAvailability extends EvalFunc<Tuple> {
         if (currentAP == null) {
             return mTupleFactory.newTuple(6);
         }
-        this.nGroups = currentAP.size();
         
         // Get recalculation requests. Create arrays with UKNOWN states that will
         // be merged later on with the results.
@@ -73,11 +71,11 @@ public class SiteAvailability extends EvalFunc<Tuple> {
             this.recalculationMap = ExternalResources.getRecalculationRequests(mongoHostname, mongoPort, date, (int) this.quantum);
         }
         
-        String service_flavor;
+        String serviceFlavor;
         State[] timeline = new State[(int)this.quantum];
                 
         for (Tuple t : (DataBag) tuple.get(0)) {            
-            service_flavor = (String) t.get(4);
+            serviceFlavor = (String) t.get(4);
             String [] tmpa = ((String) t.get(2)).substring(1, ((String)t.get(2)).length() - 1).split(", ");
             
             for (int i = 0; i<tmpa.length; i++) {
@@ -94,13 +92,13 @@ public class SiteAvailability extends EvalFunc<Tuple> {
 //                Logger.getLogger(SiteAvailability.class.getName()).log(Level.SEVERE, null, ex);
 //            }
 
-            Integer group_id = currentAP.get(service_flavor);
+            Integer groupID = currentAP.get(serviceFlavor);
             
-            if (groupingTable.containsKey(group_id)) {
-                Utils.makeOR(timeline, groupingTable.get(group_id));
+            if (groupingTable.containsKey(groupID)) {
+                Utils.makeOR(timeline, groupingTable.get(groupID));
             } else {
-                if (group_id!=null) {
-                    groupingTable.put(group_id, timeline);
+                if (groupID!=null) {
+                    groupingTable.put(groupID, timeline);
                 } 
             }
         }
@@ -108,7 +106,7 @@ public class SiteAvailability extends EvalFunc<Tuple> {
         // We get the first table, we dont care about the first iteration
         // because we do an AND with self.
         State[] outputTable = null;
-        if (groupingTable.size() > this.nGroups) {
+        if (groupingTable.size() > currentAP.size()) {
             throw new UnsupportedOperationException("A site has more flavors than expected. Something is terribly wrong! " + groupingTable.keySet());
         } else {
             if (groupingTable.values().size() > 0) {
