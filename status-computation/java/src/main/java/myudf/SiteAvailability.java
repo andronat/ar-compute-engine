@@ -29,7 +29,7 @@ public class SiteAvailability extends EvalFunc<Tuple> {
     private Map<String, String> weights = null;
     
     private Integer nGroups = null;
-    private Map<String, Map<String, Integer>> hlps = null;
+    private Map<String, Map<String, Integer>> allAPs = null;
     private Map<String, Map<String, Object>> recalculationMap = null;
 
     @Override
@@ -52,18 +52,18 @@ public class SiteAvailability extends EvalFunc<Tuple> {
         
         // Connect to mongo and retrive a Map that contains Service Flavours as keys
         // and as values, a bag with the appropriate availability profiles.
-        if (this.hlps == null) {
+        if (this.allAPs == null) {
             String mongoHostname = mongoInfo.split(":",2)[0];
             int mongoPort = Integer.parseInt(mongoInfo.split(":",2)[1]);
             
-            this.hlps = ExternalResources.initAPs(mongoHostname, mongoPort);
+            this.allAPs = ExternalResources.initAPs(mongoHostname, mongoPort);
         }
         
-        Map<String, Integer> highLevelProfiles = this.hlps.get(availabilityProfile);
-        if (highLevelProfiles == null) {
-            return null;
+        Map<String, Integer> currentAP = this.allAPs.get(availabilityProfile);
+        if (currentAP == null) {
+            return mTupleFactory.newTuple(6);
         }
-        this.nGroups = highLevelProfiles.size();
+        this.nGroups = currentAP.size();
         
         // Get recalculation requests. Create arrays with UKNOWN states that will
         // be merged later on with the results.
@@ -95,7 +95,7 @@ public class SiteAvailability extends EvalFunc<Tuple> {
 //                Logger.getLogger(SiteAvailability.class.getName()).log(Level.SEVERE, null, ex);
 //            }
 
-            Integer group_id = highLevelProfiles.get(service_flavor);
+            Integer group_id = currentAP.get(service_flavor);
             
             if (ultimate_kickass_table.containsKey(group_id)) {
                 Utils.makeOR(timeline, ultimate_kickass_table.get(group_id));
@@ -113,8 +113,6 @@ public class SiteAvailability extends EvalFunc<Tuple> {
         // We get the first table, we dont care about the first iteration
         // because we do an AND with self.
         if (ultimate_kickass_table.size() > this.nGroups) {
-            // this.output_table = new String[24];
-            // Utils.makeMiss(this.output_table);
             throw new UnsupportedOperationException("A site has more flavors than expected. Something is terribly wrong! " + ultimate_kickass_table.keySet());
         } else {
             if (ultimate_kickass_table.values().size() > 0) {
