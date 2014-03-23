@@ -171,14 +171,14 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
     // Input: timeline: {(metric, status, time_stamp)},profile_metrics: {metric}, previous_date, hostname, service_flavor
     public Tuple exec(Tuple tuple) throws IOException {
         try {
-            String hostname, service_flavor, pprofile;
+            String hostname, service_flavor, poemProfile;
             Integer calculationDate = null;
 
             // Get timeline and profiles to two different structures.
             try {
                 this.timeLineIt = ((DataBag) tuple.get(0)).iterator();
                 this.point = null;
-                pprofile = (String) tuple.get(1);
+                poemProfile = (String) tuple.get(1);
                 this.prev_date = (String) tuple.get(2);
                 hostname = (String) tuple.get(3);
                 service_flavor = (String) tuple.get(4);
@@ -202,14 +202,14 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
             
             // Check if the current poem profile can be matched with an 
             // availability profile. If not, send a null row
-            if (!this.poemToAPsMap.containsKey(pprofile)) {
+            if (!this.poemToAPsMap.containsKey(poemProfile)) {
                 // we need to return a tuple with nulls
                 return mTupleFactory.newTuple(3);
             }
 
             // Read the profile.
             this.profile.clear();
-            this.profile.addAll(this.poems.get(pprofile + " " + service_flavor));
+            this.profile.addAll(this.poems.get(poemProfile + " " + service_flavor));
 
             if (this.profile.isEmpty()) {
                 throw new IOException("Profile is empty!");
@@ -297,7 +297,7 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
             Tuple t = mTupleFactory.newTuple();
             t.append(calculationDate);
             t.append(Arrays.toString(timelineTable));
-            t.append(this.poemToAPsMap.get(pprofile).get(service_flavor));
+            t.append(this.poemToAPsMap.get(poemProfile).get(service_flavor));
 
             return t;
         } catch (ExecException ee) {
