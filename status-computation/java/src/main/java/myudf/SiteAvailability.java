@@ -64,7 +64,7 @@ public class SiteAvailability extends EvalFunc<Tuple> {
         if (highLevelProfiles == null) {
             return null;
         }
-        this.nGroups = Collections.max(highLevelProfiles.values());
+        this.nGroups = highLevelProfiles.size();
         
         // Get recalculation requests. Create arrays with UKNOWN states that will
         // be merged later on with the results.
