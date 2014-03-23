@@ -39,6 +39,9 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
     private Map<String, Entry<Integer, Integer>> downtimes = null;
     private Map<String, ArrayList<String>> poems = null;
     
+    // This map contains: poem profile -> service flavour -> list of valid APs
+    private Map<String, Map<String, DataBag>> poemToAPsMap = null;
+    
     private Tuple point = null;
     private Iterator<Tuple> timeLineIt = null;
 
@@ -186,8 +189,22 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
                 if (this.poems == null) {
                     this.poems = ExternalResources.initPOEMs((String) tuple.get(7));
                 }
+                if (this.poemToAPsMap == null) {
+                    String[] mongoInfo = ((String) tuple.get(8)).split(":", 2);
+                    String mongoHostname = mongoInfo[0];
+                    int mongoPort = Integer.parseInt(mongoInfo[1]);
+
+                    this.poemToAPsMap = ExternalResources.getSFtoAvailabilityProfileNames(mongoHostname, mongoPort);
+                }
             } catch (Exception e) {
                 throw new IOException("There is a problem with the input in HostServiceTimelines: " + e);
+            }
+            
+            // Check if the current poem profile can be matched with an 
+            // availability profile. If not, send a null row
+            if (!this.poemToAPsMap.containsKey(pprofile)) {
+                // we need to return a tuple with nulls
+                return mTupleFactory.newTuple(3);
             }
 
             // Read the profile.
@@ -284,6 +301,7 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
             Tuple t = mTupleFactory.newTuple();
             t.append(calculationDate);
             t.append(Arrays.toString(timelineTable));
+            t.append(this.poemToAPsMap.get(pprofile).get(service_flavor));
 
             return t;
         } catch (ExecException ee) {
@@ -299,10 +317,22 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
         try {
             Schema.FieldSchema date = new Schema.FieldSchema("date", DataType.INTEGER);
             Schema.FieldSchema timeline = new Schema.FieldSchema("timeline", DataType.CHARARRAY);
+            Schema.FieldSchema availability_profile = new Schema.FieldSchema("availability_profile", DataType.CHARARRAY);
+            
+            Schema apS = new Schema();
+            apS.add(availability_profile);
+            Schema.FieldSchema availability_profiles = null;
+            try {
+                availability_profiles = new Schema.FieldSchema("availability_profiles", apS, DataType.BAG);
+            } catch (FrontendException ex) {
+                Logger.getLogger(AddTopology.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
 
             Schema tuple = new Schema();
             tuple.add(date);
             tuple.add(timeline);
+            tuple.add(availability_profiles);
 
             return new Schema(new Schema.FieldSchema("date_timeline", tuple, DataType.TUPLE));
         } catch (FrontendException ex) {
