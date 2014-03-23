@@ -98,7 +98,7 @@ public class SiteAvailability extends EvalFunc<Tuple> {
                 Utils.makeOR(timeline, groupingTable.get(groupID));
             } else {
                 if (groupID!=null) {
-                    groupingTable.put(groupID, timeline);
+                    groupingTable.put(groupID, timeline.clone());
                 } 
             }
         }
@@ -106,18 +106,14 @@ public class SiteAvailability extends EvalFunc<Tuple> {
         // We get the first table, we dont care about the first iteration
         // because we do an AND with self.
         State[] outputTable = null;
-        if (groupingTable.size() > currentAP.size()) {
-            throw new UnsupportedOperationException("A site has more flavors than expected. Something is terribly wrong! " + groupingTable.keySet());
-        } else {
-            if (groupingTable.values().size() > 0) {
-                outputTable = groupingTable.values().iterator().next();
-                for (State[] tb : groupingTable.values()) {
-                    Utils.makeAND(tb, outputTable);
-                }
-            } else {
-                outputTable = new State[(int)this.quantum];
-                Utils.makeMiss(outputTable);
+        if (groupingTable.values().size() > 0) {
+            outputTable = groupingTable.values().iterator().next();
+            for (State[] tb : groupingTable.values()) {
+                Utils.makeAND(tb, outputTable);
             }
+        } else {
+            outputTable = new State[(int) this.quantum];
+            Utils.makeMiss(outputTable);
         }
         
         // Get the weight of each site. If the weight is missing, mark it as 1.
