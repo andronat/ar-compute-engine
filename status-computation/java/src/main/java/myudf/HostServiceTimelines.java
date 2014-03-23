@@ -294,10 +294,10 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
             
             // OUTPUT SECTION
             // Schema: timeline: (date(e.g. 20130823), (quantum*"OK"))
-            Tuple t = mTupleFactory.newTuple();
-            t.append(calculationDate);
-            t.append(Arrays.toString(timelineTable));
-            t.append(this.poemToAPsMap.get(poemProfile).get(service_flavor));
+            Tuple t = mTupleFactory.newTuple(3);
+            t.set(0, calculationDate);
+            t.set(1, Arrays.toString(timelineTable));
+            t.set(2, this.poemToAPsMap.get(poemProfile).get(service_flavor));
 
             return t;
         } catch (ExecException ee) {
@@ -323,7 +323,6 @@ public class HostServiceTimelines extends EvalFunc<Tuple> {
             } catch (FrontendException ex) {
                 Logger.getLogger(AddTopology.class.getName()).log(Level.SEVERE, null, ex);
             }
-
 
             Schema tuple = new Schema();
             tuple.add(date);
