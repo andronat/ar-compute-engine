@@ -87,20 +87,20 @@ profiled_logs = FOREACH (GROUP logs BY (hostname, service_flavour, profile) PARA
                  logs.(metric, status, time_stamp) as timeline;
 
 --- We calculate the timelines and create an integral of all reports
-timetables = FOREACH profiled_logs {
+timetables_a = FOREACH profiled_logs {
         timeline_s = ORDER timeline BY time_stamp;
         vos = DISTINCT vo;
         GENERATE hostname, service_flavour, profile, vos as vo,
-            FLATTEN(HST(timeline_s, profile, '$PREV_DATE', hostname, service_flavour, '$CUR_DATE', '$DOWNTIMES', '$POEMS')) as (date, timeline);
+            FLATTEN(HST(timeline_s, profile, '$PREV_DATE', hostname, service_flavour, '$CUR_DATE', '$DOWNTIMES', '$POEMS', '$mongoServer')) as (date, timeline, availability_profiles);
 };
 
---- Join topology with logs, so we have have for each log row, all topology information. Also append Availability Profiles.
-topologed_j = FOREACH timetables GENERATE date, profile, timeline, hostname, service_flavour,
-                 FLATTEN(AT(hostname, service_flavour, '$TOPOLOGY', '$TOPOLOGY2', '$TOPOLOGY3', '$mongoServer', profile));
-
 --- We should delete rows with no APs. Then we need to split the bag, and create lines with individual APs
-topologed = FOREACH (filter topologed_j by not IsEmpty(availability_profiles)) 
-                GENERATE $0..$12, FLATTEN(availability_profiles) as availability_profile;
+timetables = FOREACH (filter timetables_a by availability_profiles is not null)
+                GENERATE $0..$5, FLATTEN(availability_profiles) as availability_profile;
+
+--- Join topology with logs, so we have have for each log row, all topology information. Also append Availability Profiles.
+topologed = FOREACH timetables GENERATE date, profile, timeline, hostname, service_flavour, availability_profile,
+                 FLATTEN(AT(hostname, service_flavour, '$TOPOLOGY', '$TOPOLOGY2', '$TOPOLOGY3'));
 
 --- Group rows by important attributes. Note the date column, will be used for making a distinction in each day
 --- After the grouping, we calculate AR for each site and append the weights
